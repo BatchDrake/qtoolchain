@@ -22,7 +22,6 @@
 #ifndef _LIBQCIRCUIT_QDB_H
 #define _LIBQCIRCUIT_QDB_H
 
-#include "qcircuit.h"
 #include "fastlist.h"
 
 struct qdb

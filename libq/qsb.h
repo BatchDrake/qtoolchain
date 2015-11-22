@@ -207,8 +207,9 @@ __qsb_read_double (struct qsb *state, double *fval)
 
 void qsb_init (struct qsb *, void *, uint32_t);
 void qsb_seek (struct qsb *, uint32_t);
-void qsb_advance (struct qsb *state, uint32_t incr);
+void qsb_advance (struct qsb *state, int32_t incr);
 uint32_t qsb_tell (const struct qsb *);
+uint8_t *qsb_bufptr (const struct qsb *);
 uint32_t qsb_remainder (const struct qsb *);
 
 QBOOL qsb_ensure (const struct qsb *, uint32_t);
