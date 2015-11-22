@@ -334,7 +334,6 @@ qcircuit_deserialize (const qdb_t *db, const void *buffer, uint32_t size)
       qwiring_destroy (wiring);
       goto fail;
     }
-
   }
 
   free (name);
