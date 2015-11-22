@@ -41,7 +41,7 @@ qsb_seek (struct qsb *state, uint32_t pos)
 }
 
 void
-qsb_advance (struct qsb *state, uint32_t incr)
+qsb_advance (struct qsb *state, int32_t incr)
 {
   state->ptr += incr;
 }
@@ -52,13 +52,22 @@ qsb_tell (const struct qsb *state)
   return state->ptr;
 }
 
-uint32_t
-qsb_remainder (const struct qsb *remainder)
+uint8_t *
+qsb_bufptr (const struct qsb *state)
 {
-  if (remainder->ptr > remainder->size)
+  if (state->ptr > state->size)
+      return NULL;
+
+  return state->bytes + state->ptr;
+}
+
+uint32_t
+qsb_remainder (const struct qsb *state)
+{
+  if (state->ptr > state->size)
     return 0;
 
-  return remainder->size - remainder->ptr;
+  return state->size - state->ptr;
 }
 
 QBOOL

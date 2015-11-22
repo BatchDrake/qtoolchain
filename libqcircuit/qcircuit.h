@@ -127,8 +127,16 @@ QBOOL qcircuit_collapse (qcircuit_t *, uint64_t, unsigned int *);
 
 void qcircuit_destroy (qcircuit_t *);
 
+#include "qdb.h"
+
 /* Serialize / deserialize functions */
 uint32_t qgate_serialize (const qgate_t *, void *, uint32_t);
 qgate_t *qgate_deserialize (const void *, uint32_t);
+
+uint32_t qwiring_serialize (const qwiring_t *, void *, uint32_t);
+qwiring_t *qwiring_deserialize (const qdb_t *, const void *, uint32_t);
+
+uint32_t qcircuit_serialize (const qcircuit_t *, void *, uint32_t);
+qcircuit_t *qcircuit_deserialize (const qdb_t *, const void *, uint32_t);
 
 #endif /* _LIBQCIRCUIT_QCIRCUIT_H */

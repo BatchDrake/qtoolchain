@@ -19,7 +19,7 @@
 
 */
 
-#include "qdb.h"
+#include "qcircuit.h"
 
 static void *
 __qgate_destroy_cb (void *gate, void *priv)
