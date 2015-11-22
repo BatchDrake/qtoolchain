@@ -48,7 +48,7 @@ main (int argc, char *argv[], char *envp[])
           (QCOMPLEX) HALFSQRT
       };
 
-  c = qcircuit_new (2);
+  c = qcircuit_new (2, "example");
 
   if (!qcircuit_update (c))
   {

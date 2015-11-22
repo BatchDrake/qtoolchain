@@ -198,7 +198,15 @@ qwiring_new (const qgate_t *gate, const unsigned int *remap)
 
   new->gate  = gate;
 
-  if ((new->remap = __remap_dup (remap, gate->order)) == NULL)
+  if (remap != NULL)
+  {
+    if ((new->remap = __remap_dup (remap, gate->order)) == NULL)
+    {
+      free (new);
+      return NULL;
+    }
+  }
+  else if ((new->remap = calloc (gate->order, sizeof (unsigned int))) == NULL)
   {
     free (new);
     return NULL;
@@ -231,6 +239,9 @@ qcircuit_destroy (qcircuit_t *circuit)
   if (circuit->collapsed != NULL)
     free (circuit->collapsed);
 
+  if (circuit->name != NULL)
+    free (circuit->name);
+
   this = circuit->wiring_head;
 
   while (this != NULL)
@@ -246,13 +257,16 @@ qcircuit_destroy (qcircuit_t *circuit)
 }
 
 qcircuit_t *
-qcircuit_new (unsigned int order)
+qcircuit_new (unsigned int order, const char *name)
 {
   qcircuit_t *new;
   unsigned int length;
 
   if ((new = calloc (1, sizeof (qcircuit_t))) == NULL)
     return NULL;
+
+  if ((new->name = strdup (name)) == NULL)
+    goto fail;
 
   new->updated = Q_FALSE;
   new->order   = order;

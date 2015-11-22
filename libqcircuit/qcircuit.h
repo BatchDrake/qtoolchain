@@ -26,8 +26,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "fastlist.h"
-
 #define QCIRCUIT_LAST_ERROR_MAX 256
 
 struct qgate
@@ -61,9 +59,10 @@ typedef struct qwiring qwiring_t;
 
 struct qcircuit
 {
-  QBOOL updated; /* U is not updated */
-
   unsigned int order; /* Number of qubits */
+  char *name;
+
+  QBOOL updated; /* U is not updated */
 
   qsparse_t *u;
 
@@ -87,7 +86,7 @@ void qgate_set_coef (qgate_t *, const QCOMPLEX *);
 qwiring_t *qwiring_new (const qgate_t *, const unsigned int *);
 void qwiring_destroy (qwiring_t *);
 
-qcircuit_t *qcircuit_new (unsigned int);
+qcircuit_t *qcircuit_new (unsigned int, const char *);
 
 void qcircuit_measure_reset (qcircuit_t *circuit);
 

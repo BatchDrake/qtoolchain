@@ -22,6 +22,7 @@
 #include <qsb.h>
 
 #include "qcircuit.h"
+#include "qdb.h"
 
 uint32_t
 qgate_serialize (const qgate_t *gate, void *buffer, uint32_t size)
@@ -42,6 +43,8 @@ qgate_serialize (const qgate_t *gate, void *buffer, uint32_t size)
 
   for (i = 0; i < length; ++i)
     qsb_write_complex (&s, gate->coef[i]);
+
+  return qsb_tell (&s);
 }
 
 qgate_t *
@@ -123,3 +126,89 @@ fail:
 
   return NULL;
 }
+
+uint32_t
+qwiring_serialize (const qwiring_t *wiring, void *buffer, uint32_t size)
+{
+  struct qsb s;
+  unsigned int length, i;
+
+  length = 1 << wiring->gate->order;
+
+  qsb_init (&s, buffer, size);
+
+  /* Write order */
+  qsb_write_uint32_t (&s, wiring->gate->order);
+
+  /* Write name. This string is important in order
+   * to retrieve the gate from the database.
+   */
+  qsb_write_string (&s, wiring->gate->name);
+
+  /* Write wiring vector */
+  for (i = 0; i < length; ++i)
+    qsb_write_uint32_t (&s, wiring->remap[i]);
+
+  return qsb_tell (&s);
+}
+
+qwiring_t *
+qwiring_deserialize (const qdb_t *db, const void *buffer, uint32_t size)
+{
+  struct qsb s;
+  qwiring_t *new = NULL;
+  qgate_t *gate;
+
+  unsigned int order;
+  unsigned int i;
+
+  char *gatename = NULL;
+
+  qsb_init (&s, (void *) buffer, size);
+
+  if (!qsb_read_uint32_t (&s, &order))
+  {
+    q_set_last_error ("Unexpected end-of-buffer while deserializing gate wiring");
+    goto fail;
+  }
+
+  if (!qsb_read_string (&s, &gatename))
+  {
+    q_set_last_error ("Unexpected end-of-buffer while deserializing gate wiring");
+    goto fail;
+  }
+
+  if (!qsb_ensure (&s, order * sizeof (uint32_t)))
+  {
+    q_set_last_error ("Unexpected end-of-buffer while deserializing gate wiring");
+    goto fail;
+  }
+
+  if ((gate = qdb_lookup_qgate (db, gatename)) == NULL)
+  {
+    q_set_last_error ("Wiring error: cannot find quantum gate '%s' in databse", gate);
+    goto fail;
+  }
+
+  if ((new = qwiring_new (gate, NULL)) == NULL)
+  {
+    q_set_last_error ("Memory exhausted while creating wiring object");
+    goto fail;
+  }
+
+  /* We have ensured earlier that the wiring vector is present. */
+  for (i = 0; i < order; ++i)
+    (void) qsb_read_uint32_t (&s, new->remap + i);
+
+  free (gatename);
+
+  return NULL;
+
+fail:
+  if (gatename != NULL)
+    free (gatename);
+
+  if (new != NULL)
+    qwiring_destroy (new);
+}
+
