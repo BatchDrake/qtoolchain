@@ -23,8 +23,14 @@
 #define _LIBQ_QSB_H
 
 #include <complex.h>
+#include <string.h>
+
 #include <q_defines.h>
 #include <q_util.h>
+
+#define QSB_FLOAT_SERIALIZED_SIZE    sizeof (uint32_t)
+#define QSB_DOUBLE_SERIALIZED_SIZE   sizeof (uint64_t)
+#define QSB_QCOMPLEX_SERIALIZED_SIZE (QSB_DOUBLE_SERIALIZED_SIZE * 2)
 
 struct qsb
 {
@@ -198,10 +204,13 @@ __qsb_read_double (struct qsb *state, double *fval)
   *fval = __qsb_ftoh_ieee754_64 (*val);
 }
 
+
 void qsb_init (struct qsb *, void *, uint32_t);
 void qsb_seek (struct qsb *, uint32_t);
 void qsb_advance (struct qsb *state, uint32_t incr);
 uint32_t qsb_tell (const struct qsb *);
+uint32_t qsb_remainder (const struct qsb *);
+
 QBOOL qsb_ensure (const struct qsb *, uint32_t);
 
 void qsb_write_uint32_t (struct qsb *, uint32_t);
@@ -209,11 +218,13 @@ void qsb_write_uint64_t (struct qsb *, uint64_t);
 void qsb_write_float (struct qsb *, float);
 void qsb_write_double (struct qsb *, double);
 void qsb_write_complex (struct qsb *, QCOMPLEX);
+void qsb_write_string (struct qsb *, const char *);
 
 QBOOL qsb_read_uint32_t (struct qsb *, uint32_t *);
 QBOOL qsb_read_uint64_t (struct qsb *, uint64_t *);
 QBOOL qsb_read_float (struct qsb *, float *);
 QBOOL qsb_read_double (struct qsb *, double *);
 QBOOL qsb_read_complex (struct qsb *, QCOMPLEX *);
+QBOOL qsb_read_string (struct qsb *, char **);
 
 #endif /* _LIBQ_QSB_H */

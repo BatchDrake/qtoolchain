@@ -24,6 +24,7 @@
 #include <string.h>
 #include <errno.h>
 #include <getopt.h>
+#include <time.h>
 #include <sys/time.h>
 #include <qtoolchain.h>
 

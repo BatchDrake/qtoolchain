@@ -32,10 +32,11 @@
 
 struct qgate
 {
+  unsigned int order;
+
   char *name;
   char *description;
 
-  unsigned int order;
   QCOMPLEX *coef;
 
   qsparse_t *sparse;
@@ -78,6 +79,10 @@ struct qcircuit
 };
 
 typedef struct qcircuit qcircuit_t;
+
+void qgate_destroy (qgate_t *);
+qgate_t *qgate_new (unsigned int, const char *, const char *, const QCOMPLEX *);
+void qgate_set_coef (qgate_t *, const QCOMPLEX *);
 
 qwiring_t *qwiring_new (const qgate_t *, const unsigned int *);
 void qwiring_destroy (qwiring_t *);
@@ -123,5 +128,8 @@ QBOOL qcircuit_collapse (qcircuit_t *, uint64_t, unsigned int *);
 
 void qcircuit_destroy (qcircuit_t *);
 
+/* Serialize / deserialize functions */
+uint32_t qgate_serialize (const qgate_t *, void *, uint32_t);
+qgate_t *qgate_deserialize (const void *, uint32_t);
 
 #endif /* _LIBQCIRCUIT_QCIRCUIT_H */

@@ -52,6 +52,15 @@ qsb_tell (const struct qsb *state)
   return state->ptr;
 }
 
+uint32_t
+qsb_remainder (const struct qsb *remainder)
+{
+  if (remainder->ptr > remainder->size)
+    return 0;
+
+  return remainder->size - remainder->ptr;
+}
+
 QBOOL
 qsb_ensure (const struct qsb *state, uint32_t size)
 {
@@ -88,7 +97,7 @@ qsb_write_float (struct qsb *state, float val)
     if (qsb_ensure (state, sizeof (uint32_t)))
       __qsb_write_float (state, val);
 
-  state->ptr += sizeof (uint32_t);
+  state->ptr += QSB_FLOAT_SERIALIZED_SIZE;
 }
 
 void
@@ -98,7 +107,7 @@ qsb_write_double (struct qsb *state, double val)
     if (qsb_ensure (state, sizeof (uint64_t)))
       __qsb_write_double (state, val);
 
-  state->ptr += sizeof (uint64_t);
+  state->ptr += QSB_DOUBLE_SERIALIZED_SIZE;
 }
 
 void
@@ -139,12 +148,12 @@ qsb_read_uint64_t (struct qsb *state, uint64_t *val)
 QBOOL
 qsb_read_float (struct qsb *state, float *val)
 {
-  if (!qsb_ensure (state, sizeof (uint32_t)))
-      return Q_FALSE;
+  if (!qsb_ensure (state, QSB_FLOAT_SERIALIZED_SIZE))
+    return Q_FALSE;
 
   __qsb_read_float (state, val);
 
-  state->ptr += sizeof (uint32_t);
+  state->ptr += QSB_FLOAT_SERIALIZED_SIZE;
 
   return Q_TRUE;
 }
@@ -152,12 +161,12 @@ qsb_read_float (struct qsb *state, float *val)
 QBOOL
 qsb_read_double (struct qsb *state, double *val)
 {
-  if (!qsb_ensure (state, sizeof (uint64_t)))
-      return Q_FALSE;
+  if (!qsb_ensure (state, QSB_DOUBLE_SERIALIZED_SIZE))
+    return Q_FALSE;
 
   __qsb_read_double (state, val);
 
-  state->ptr += sizeof (uint64_t);
+  state->ptr += QSB_DOUBLE_SERIALIZED_SIZE;
 
   return Q_TRUE;
 }
@@ -167,19 +176,73 @@ qsb_read_complex (struct qsb *state, QCOMPLEX *val)
 {
   double real, imag;
 
-  if (!qsb_ensure (state, 2 * sizeof (uint64_t)))
+  if (!qsb_ensure (state, QSB_QCOMPLEX_SERIALIZED_SIZE))
     return Q_FALSE;
 
   __qsb_read_double (state, &real);
 
-  state->ptr += sizeof (uint64_t);
+  state->ptr += QSB_DOUBLE_SERIALIZED_SIZE;
 
   __qsb_read_double (state, &imag);
 
-  state->ptr += sizeof (uint64_t);
+  state->ptr += QSB_DOUBLE_SERIALIZED_SIZE;
 
   *val = real + I * imag;
 
   return Q_TRUE;
 }
+
+
+
+void
+qsb_write_string (struct qsb *state, const char *string)
+{
+  uint32_t len;
+  uint32_t rem;
+
+  len = strlen (string) + 1;
+
+  qsb_write_uint32_t (state, len);
+
+  rem = qsb_remainder (state);
+
+  if (rem > len)
+    rem = len;
+
+  if (rem > 0)
+    memcpy (&state->bytes[state->ptr], string, rem);
+
+  qsb_advance (state, len);
+}
+
+QBOOL
+qsb_read_string (struct qsb *state, char **string)
+{
+  uint32_t len;
+  const char *ref;
+
+  if (!qsb_ensure (state, sizeof (uint32_t)))
+    return Q_FALSE;
+
+  __qsb_read_uint32_t (state, &len);
+
+  /* We either read the whole string or we don't read it at all */
+  if (!qsb_ensure (state, sizeof (uint32_t) + len))
+    return Q_FALSE;
+
+  state->ptr += sizeof (uint32_t);
+
+  ref = (const char *) &state->bytes[state->ptr];
+
+  state->ptr += len;
+
+  if (string != NULL && (*string = malloc (len)) != NULL)
+  {
+    memcpy (*string, ref, len);
+    (*string)[len - 1] = '\0';
+  }
+
+  return Q_FALSE;
+}
+
 

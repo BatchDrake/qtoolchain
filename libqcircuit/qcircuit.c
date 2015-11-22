@@ -112,6 +112,65 @@ randslot (const struct qstate_info *slots, unsigned int n)
   return 0;
 }
 
+void
+qgate_destroy (qgate_t *gate)
+{
+  if (gate->name != NULL)
+    free (gate->name);
+
+  if (gate->description != NULL)
+    free (gate->description);
+
+  if (gate->coef != NULL)
+    free (gate->coef);
+
+  if (gate->sparse != NULL)
+    qsparse_destroy (gate->sparse);
+
+  free (gate);
+}
+
+qgate_t *
+qgate_new (unsigned int order, const char *name, const char *desc, const QCOMPLEX *coef)
+{
+  unsigned int length;
+  qgate_t *new = NULL;
+
+  length = 1 << (order + 1);
+
+  if ((new = calloc (1, sizeof (qgate_t))) == NULL)
+    goto fail;
+
+  if ((new->name = strdup (name)) == NULL)
+    goto fail;
+
+  if ((new->description = strdup (desc)) == NULL)
+      goto fail;
+
+  if ((new->coef = calloc (length, sizeof (QCOMPLEX))) == NULL)
+      goto fail;
+
+  if (coef != NULL)
+    memcpy (new->coef, coef, length);
+
+  return new;
+
+fail:
+  if (new != NULL)
+    qgate_destroy (new);
+
+  return NULL;
+}
+
+void
+qgate_set_coef (qgate_t *gate, const QCOMPLEX *coef)
+{
+  unsigned int length;
+  length = 1 << (gate->order + 1);
+
+  memcpy (gate->coef, coef, length);
+}
+
 static unsigned int *
 __remap_dup (const unsigned int *remap, unsigned int order)
 {

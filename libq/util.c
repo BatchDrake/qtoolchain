@@ -20,6 +20,7 @@
 */
 
 #include <stdarg.h>
+#include <stdio.h>
 
 #include "q_defines.h"
 #include "q_util.h"
