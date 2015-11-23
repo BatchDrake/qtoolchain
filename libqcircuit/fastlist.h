@@ -25,6 +25,19 @@
 #define FASTLIST_INITIALIZER {0, 0, 0, 0, NULL}
 #define FASTLIST_INVALID_REF ((fastlist_ref_t) -1)
 
+
+#define FASTLIST_FOR_BEGIN(type, obj, fl)        \
+{                                                 \
+  type obj;                                       \
+  unsigned int __i, __size;                      \
+  __size = fastlist_size (fl);                    \
+  for (__i = 0; __i < __size; ++__i)              \
+    if ((obj = (type) (fl)->list[__i]) != NULL)   \
+    {
+
+#define FASTLIST_FOR_END }}
+
+
 struct fastlist
 {
   unsigned int   size;
