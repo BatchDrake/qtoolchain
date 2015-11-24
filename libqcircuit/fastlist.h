@@ -22,6 +22,8 @@
 #ifndef _LIBQCIRCUIT_FASTLIST_H
 #define _LIBQCIRCUIT_FASTLIST_H
 
+#include <q_defines.h>
+
 #define FASTLIST_INITIALIZER {0, 0, 0, 0, NULL}
 #define FASTLIST_INVALID_REF ((fastlist_ref_t) -1)
 

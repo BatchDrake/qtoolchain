@@ -57,6 +57,7 @@ AC_SUBST(GLOBAL_LDFLAGS)
 AC_OUTPUT([
   Makefile
   src/Makefile
+  src/qas/Makefile
   util/Makefile
   libq/Makefile
   libqcircuit/Makefile
