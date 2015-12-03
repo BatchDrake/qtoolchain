@@ -41,7 +41,7 @@ fastlist_grow (fastlist_t *fl)
     return Q_FALSE;
 
   if (allocation == 1)
-    new_list[0];
+    new_list[0] = '\0';
   else
     memset (&new_list[fl->allocation], 0, fl->allocation * sizeof (void *));
 
@@ -73,7 +73,7 @@ fastlist_find_free (const fastlist_t *fl)
 QBOOL
 fastlist_set (fastlist_t *fl, fastlist_ref_t ref, void *buf)
 {
-  if (ref >= fl->size)
+  if (ref >= fl->allocation)
     return Q_FALSE;
 
   if (fl->list[ref] != NULL && buf == NULL)
@@ -90,6 +90,8 @@ fastlist_set (fastlist_t *fl, fastlist_ref_t ref, void *buf)
     else
       fl->last_freed = ref;
   }
+  else if (ref >= fl->size)
+    fl->size = ref + 1;
 
   return Q_TRUE;
 }
@@ -161,4 +163,10 @@ fastlist_free (fastlist_t *fl)
 {
   if (fl->list != NULL)
     free (fl->list);
+
+  fl->allocation = 0;
+  fl->last_freed = 0;
+  fl->list       = NULL;
+  fl->size       = 0;
+  fl->used       = 0;
 }

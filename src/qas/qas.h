@@ -26,9 +26,12 @@
 
 #include <qcircuit.h>
 
+#define QAS_CTX_EOF -1
+#define QAS_ERROR_MAX 256
+
 struct qas_ctx
 {
-  const char *path;
+  char *path;
   unsigned int line;
 
   union
@@ -37,11 +40,12 @@ struct qas_ctx
     const uint8_t *file_bytes;
   };
 
+  unsigned int file_ptr;
   size_t file_size;
 
   void (*closebuf_fn) (void *, size_t);
 
-  char *error;
+  char error[QAS_ERROR_MAX];
   QBOOL failed;
   QBOOL parsed;
 
@@ -58,7 +62,9 @@ QBOOL qas_parse (qas_ctx_t *);
 
 QBOOL qas_is_parsed (const qas_ctx_t *);
 QBOOL qas_has_failed (const qas_ctx_t *);
+void qas_set_error (qas_ctx_t *, const char *, ...);
 const char *qas_get_error (const qas_ctx_t *);
+const char *qas_get_path (const qas_ctx_t *);
 unsigned int qas_get_line (const qas_ctx_t *);
 
 /* Pops the database and sets it to NULL. */

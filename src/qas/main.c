@@ -25,6 +25,42 @@
 int
 main (int argc, char *argv[])
 {
+  qas_ctx_t *ctx;
+
+  if (argc != 2)
+  {
+    fprintf (stderr, "Usage:\n\t%s <file.qas>\n", argv[0]);
+    exit (EXIT_FAILURE);
+  }
+
+  if ((ctx = qas_open_from_file (argv[1])) == NULL)
+  {
+    fprintf (stderr, "%s: cannot open `%s'\n",
+             argv[0],
+             argv[1]);
+    fprintf (stderr, "%s\n",
+             q_get_last_error ());
+    exit (EXIT_FAILURE);
+  }
+
+  if (!qas_parse (ctx))
+  {
+    fprintf (stderr, "%s: parse error\n",
+                 argv[0]);
+    fprintf (stderr, "%s:%d: %s\n",
+                     qas_get_path (ctx),
+                     qas_get_line (ctx),
+                     qas_get_error (ctx));
+
+    qas_close (ctx);
+
+    exit (EXIT_FAILURE);
+  }
+
+  fprintf (stderr, "%s: parse OK\n", argv[0]);
+
+  qas_close (ctx);
+
   return 0;
 }
 
