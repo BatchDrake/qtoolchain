@@ -29,6 +29,13 @@
 #define QAS_CTX_EOF -1
 #define QAS_ERROR_MAX 256
 
+enum qas_ctx_kind
+{
+  QAS_CTX_KIND_GLOBAL,
+  QAS_CTX_KIND_CIRCUIT,
+  QAS_CTX_KIND_GATE
+};
+
 struct qas_ctx
 {
   char *path;
@@ -45,18 +52,24 @@ struct qas_ctx
 
   void (*closebuf_fn) (void *, size_t);
 
-  char error[QAS_ERROR_MAX];
+  char last_error[QAS_ERROR_MAX];
   QBOOL failed;
   QBOOL parsed;
 
   struct qas_ctx *parent; /* For included files */
 
   qdb_t *qdb; /* Database of parsed objects */
+
+  enum qas_ctx_kind ctx_kind;
+
+  /* For building circuits */
+  qcircuit_t *curr_circuit;
 };
 
 typedef struct qas_ctx qas_ctx_t;
 
 qas_ctx_t *qas_open_from_file (const char *);
+qas_ctx_t *__qas_ctx_open_from_file (const char *, qas_ctx_t *);
 
 QBOOL qas_parse (qas_ctx_t *);
 

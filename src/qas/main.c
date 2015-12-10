@@ -45,9 +45,7 @@ main (int argc, char *argv[])
 
   if (!qas_parse (ctx))
   {
-    fprintf (stderr, "%s: parse error\n",
-                 argv[0]);
-    fprintf (stderr, "%s:%d: %s\n",
+    fprintf (stderr, "error: %s:%d: %s\n",
                      qas_get_path (ctx),
                      qas_get_line (ctx),
                      qas_get_error (ctx));

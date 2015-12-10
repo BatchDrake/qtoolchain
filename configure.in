@@ -48,7 +48,7 @@ AC_FUNC_FORK
 AC_FUNC_MALLOC
 
 GLOBAL_LDFLAGS="-lm -lpthread -ldl -export-dynamic -rdynamic"
-GLOBAL_CFLAGS="-DLITTLE_ENDIAN"
+GLOBAL_CFLAGS="-DLITTLE_ENDIAN -ggdb"
 
 dnl Macro snippets imported from dependency util
 

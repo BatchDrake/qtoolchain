@@ -100,7 +100,7 @@
 #endif
 
 #define debug DEBUG
-#define error ERROR
+#define parse_error ERROR
 
 #define PTR_LIST(type, name)                         \
   type ** name ## _list;                             \

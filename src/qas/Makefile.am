@@ -4,5 +4,5 @@ qas_LDFLAGS = @GLOBAL_LDFLAGS@
 
 qas_LDADD = ../../util/libutil.la ../../libqcircuit/libqcircuit.la ../../libq/libq.la @GLOBAL_LDFLAGS@
 
-qas_SOURCES = main.c qas.h qas.c
+qas_SOURCES = main.c parser.c qas.h qas.c
 
