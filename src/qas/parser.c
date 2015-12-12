@@ -52,6 +52,17 @@ static char *q_string_remove_quotes (const char *);
     return Q_FALSE;                       \
   }
 
+#define Q_ENSURE_MIN_ARGS(num)            \
+  if (fastlist_size (args) < (num))       \
+  {                                       \
+    qas_set_error (ctx,                   \
+                   "%s: expected at least %d arguments, but only %d were given", \
+                   inst,                  \
+                   num,                   \
+                   fastlist_size (args)); \
+    return Q_FALSE;                       \
+  }
+
 #define Q_ENSURE_CONTEXT(kind)            \
   if (ctx->ctx_kind != (kind))            \
   {                                       \
@@ -98,7 +109,42 @@ static char *q_string_remove_quotes (const char *);
                    "%s: argument %d not a number", \
                    inst, arg + 1);        \
     return Q_FALSE;                       \
-}
+  }
+
+#define Q_PARSE_COMPLEX(arg, output)      \
+  {                                       \
+    QREAL __abs, __arg = .0;              \
+                                          \
+    if (sscanf (Q_ARG (arg),              \
+                QREALFMT "[" QREALFMT "]",\
+                &__abs,                   \
+                &__arg) != 2)             \
+      if (!sscanf (Q_ARG (arg),           \
+                   QREALFMT,              \
+                   &__abs))               \
+      {                                   \
+        qas_set_error (ctx,               \
+                       "%s: argument %d not a complex number", \
+                       inst, arg + 1);    \
+        return Q_FALSE;                   \
+      }                                   \
+                                          \
+    output = __abs * cexp (I * __arg);    \
+  }
+
+#define Q_CIRCUIT_ERROR(ctx, fmt, arg...) \
+    qas_set_error (ctx,                   \
+                   "in circuit `%s': "    \
+                   fmt,                   \
+                   ctx->curr_circuit->name, \
+                   ##arg)
+
+#define Q_GATE_ERROR(ctx, fmt, arg...)    \
+    qas_set_error (ctx,                   \
+                   "in gate `%s': "       \
+                   fmt,                   \
+                   ctx->curr_gate->name,  \
+                   ##arg)
 
 typedef QBOOL (*qas_instruction_callback_t) (qas_ctx_t *, const char *, const fastlist_t *);
 
@@ -111,12 +157,18 @@ struct qas_instruction
 QINSTDECL(circuit);
 QINSTDECL(end);
 QINSTDECL(include);
+QINSTDECL(gate);
+QINSTDECL(coef);
+QINSTDECL(qubit);
 
 struct qas_instruction instructions[] =
 {
     {".circuit", QINSTFUNC (circuit)},
-    {".end", QINSTFUNC (end)},
+    {".gate",    QINSTFUNC (gate)},
+    {".end",     QINSTFUNC (end)},
     {".include", QINSTFUNC (include)},
+    {".coef",    QINSTFUNC (coef)},
+    {".qubit",   QINSTFUNC (qubit)},
     {NULL, NULL}
 };
 
@@ -137,6 +189,129 @@ QINSTDECL(circuit)
     return Q_FALSE;
 
   ctx->ctx_kind = QAS_CTX_KIND_CIRCUIT;
+
+  return Q_TRUE;
+}
+
+QINSTDECL(gate)
+{
+  unsigned int qubits;
+  char *desc;
+
+  Q_ENSURE_ARGS (3);
+  Q_ENSURE_CONTEXT (QAS_CTX_KIND_GLOBAL);
+
+  Q_ENSURE_IDENTIFIER (0);
+  Q_ENSURE_NUM (1);
+  Q_ENSURE_STRING (2);
+
+  /* Create gate */
+  Q_PARSE_NUM (1, qubits);
+
+  if ((desc = q_string_remove_quotes (Q_ARG (2))) == NULL)
+  {
+    qas_set_error (ctx, "memory exhausted");
+
+    return Q_FALSE;
+  }
+
+  if ((ctx->curr_gate = qgate_new (qubits, Q_ARG (0), desc, NULL)) == NULL)
+  {
+    qas_set_error (ctx, "failed to create gate: %s", q_get_last_error ());
+
+    free (desc);
+
+    return Q_FALSE;
+  }
+
+  ctx->curr_coef = 0;
+
+  free (desc);
+
+  ctx->ctx_kind = QAS_CTX_KIND_GATE;
+
+  return Q_TRUE;
+}
+
+QINSTDECL(coef)
+{
+  unsigned int i;
+  unsigned int matrix_length;
+  QCOMPLEX coef;
+
+  Q_ENSURE_MIN_ARGS (1);
+
+  Q_ENSURE_CONTEXT (QAS_CTX_KIND_GATE);
+
+  matrix_length = 1 << (ctx->curr_gate->order + 1);
+
+  for (i = 0; i < fastlist_size (args); ++i)
+  {
+    Q_PARSE_COMPLEX (i, coef);
+
+    if (ctx->curr_coef >= matrix_length)
+    {
+      Q_GATE_ERROR (ctx,
+                    "gate matrix coefficient count exceeded (%d)",
+                     matrix_length);
+
+      return Q_FALSE;
+    }
+
+    ctx->curr_gate->coef[ctx->curr_coef++] = coef;
+  }
+
+  return Q_TRUE;
+}
+
+static fastlist_ref_t
+qas_ctx_resolve_qubit_alias (const qas_ctx_t *ctx, const char *name)
+{
+  FASTLIST_FOR_BEGIN (const char *, alias, &ctx->qubit_aliases)
+    if (strcmp (alias, name) == 0)
+      return FASTLIST_FOR_INNERMOST_REF;
+  FASTLIST_FOR_END
+
+  return FASTLIST_INVALID_REF;
+}
+
+QINSTDECL(qubit)
+{
+  char *dup;
+
+  Q_ENSURE_ARGS (1);
+
+  Q_ENSURE_CONTEXT (QAS_CTX_KIND_CIRCUIT);
+
+  if (fastlist_size (&ctx->qubit_aliases) >= ctx->curr_circuit->order)
+  {
+    Q_CIRCUIT_ERROR (ctx, "too many qubits");
+
+    return Q_FALSE;
+  }
+
+  if (qas_ctx_resolve_qubit_alias (ctx, Q_ARG (0)) != FASTLIST_INVALID_REF)
+  {
+    Q_CIRCUIT_ERROR (ctx, "qubit `%s' already declared", Q_ARG (0));
+
+    return Q_FALSE;
+  }
+
+  if ((dup = strdup (Q_ARG (0))) == NULL)
+  {
+    Q_CIRCUIT_ERROR (ctx, "memory exhausted");
+
+    return Q_FALSE;
+  }
+
+  if (fastlist_append(&ctx->qubit_aliases, dup) == 0)
+  {
+    Q_CIRCUIT_ERROR (ctx, "memory exhausted");
+
+    free (dup);
+
+    return Q_FALSE;
+  }
 
   return Q_TRUE;
 }
@@ -204,12 +379,25 @@ QINSTDECL(end)
 
       ctx->curr_circuit = NULL;
 
-      /* Close circuit context */
-      return Q_TRUE;
+      FASTLIST_FOR_BEGIN (char *, alias, &ctx->qubit_aliases)
+        free (alias);
+      FASTLIST_FOR_END
+
+      fastlist_free (&ctx->qubit_aliases);
+
+      break;
 
     case QAS_CTX_KIND_GATE:
-      /* Close circuit context */
-      return Q_FALSE;
+      if (!qdb_register_qgate (ctx->qdb, ctx->curr_gate))
+      {
+        qas_set_error (ctx, "cannot register circuit: %s", q_get_last_error ());
+
+        return Q_FALSE;
+      }
+
+      ctx->curr_gate = NULL;
+
+      break;
 
     case QAS_CTX_KIND_GLOBAL:
       qas_set_error (ctx, "%s: no context to close", inst);
@@ -307,7 +495,7 @@ qas_read_line (qas_ctx_t *ctx)
 static inline const char *
 __get_next_nontok (const char *str)
 {
-  while (*str && (isalnum (*str) || strchr ("._-$", *str) != NULL))
+  while (*str && (isalnum (*str) || strchr ("._-$[]", *str) != NULL))
     ++str;
 
   return str;

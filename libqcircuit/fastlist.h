@@ -28,13 +28,19 @@
 #define FASTLIST_INVALID_REF ((fastlist_ref_t) -1)
 
 
-#define FASTLIST_FOR_BEGIN(type, obj, fl)        \
-{                                                 \
-  type obj;                                       \
-  unsigned int __i, __size;                      \
-  __size = fastlist_size (fl);                    \
-  for (__i = 0; __i < __size; ++__i)              \
-    if ((obj = (type) (fl)->list[__i]) != NULL)   \
+#define FASTLIST_REF_VAR __i
+#define FASTLIST_FOR_INNERMOST_REF ((fastlist_ref_t) FASTLIST_REF_VAR)
+
+#define FASTLIST_FOR_BEGIN(type, obj, fl)             \
+{                                                     \
+  type obj;                                           \
+  unsigned int FASTLIST_REF_VAR, __size;              \
+  __size = fastlist_size (fl);                        \
+  for (FASTLIST_REF_VAR = 0;                          \
+    FASTLIST_REF_VAR < __size;                        \
+    ++FASTLIST_REF_VAR)                               \
+    if ((obj =                                        \
+        (type) (fl)->list[FASTLIST_REF_VAR]) != NULL) \
     {
 
 #define FASTLIST_FOR_END }}

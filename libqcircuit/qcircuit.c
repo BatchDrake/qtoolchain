@@ -150,6 +150,8 @@ qgate_new (unsigned int order, const char *name, const char *desc, const QCOMPLE
   if ((new->coef = calloc (length, sizeof (QCOMPLEX))) == NULL)
       goto fail;
 
+  new->order = order;
+
   if (coef != NULL)
     memcpy (new->coef, coef, length);
 
@@ -160,6 +162,23 @@ fail:
     qgate_destroy (new);
 
   return NULL;
+}
+
+void
+qgate_debug (const qgate_t *gate)
+{
+  unsigned int length, i, j;
+  length = 1 << gate->order;
+
+  for (j = 0; j < length; ++j)
+  {
+    for (i = 0; i < length; ++i)
+      printf ("%lg(%lg)  ",
+              cabs (gate->coef[i + j * length]),
+              carg (gate->coef[i + j * length]));
+
+    printf ("\n");
+  }
 }
 
 void

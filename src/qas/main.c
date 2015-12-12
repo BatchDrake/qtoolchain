@@ -26,6 +26,8 @@ int
 main (int argc, char *argv[])
 {
   qas_ctx_t *ctx;
+  qdb_t *db;
+  unsigned int i;
 
   if (argc != 2)
   {
@@ -57,7 +59,20 @@ main (int argc, char *argv[])
 
   fprintf (stderr, "%s: parse OK\n", argv[0]);
 
+  db = qas_pop_db (ctx);
+
+  FASTLIST_FOR_BEGIN (qgate_t *, gate, &db->qgates)
+    printf ("Gate %s (%s)\n", gate->name, gate->description);
+
+    qgate_debug(gate);
+
+    printf ("\n");
+
+  FASTLIST_FOR_END
+
   qas_close (ctx);
+
+  qdb_destroy (db, Q_TRUE);
 
   return 0;
 }

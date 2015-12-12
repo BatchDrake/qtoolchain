@@ -29,6 +29,8 @@
 #define Q_FALSE 0
 
 #define QBOOL    int
+#define QREAL    double
+#define QREALFMT "%lf"
 #define QCOMPLEX double complex
 #define QNZCOUNT uint8_t
 

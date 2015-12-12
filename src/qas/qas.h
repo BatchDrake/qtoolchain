@@ -64,6 +64,11 @@ struct qas_ctx
 
   /* For building circuits */
   qcircuit_t *curr_circuit;
+  fastlist_t  qubit_aliases; /* Qubit aliases to ease programming */
+
+  /* For building gates */
+  qgate_t *curr_gate;
+  unsigned int curr_coef;
 };
 
 typedef struct qas_ctx qas_ctx_t;

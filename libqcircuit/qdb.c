@@ -108,7 +108,7 @@ qdb_register_qgate (qdb_t *db, qgate_t *gate)
 QBOOL
 qdb_register_qcircuit (qdb_t *db, qcircuit_t *qcircuit)
 {
-  if (fastlist_append (&db->qgates, qcircuit) == FASTLIST_INVALID_REF)
+  if (fastlist_append (&db->qcircuits, qcircuit) == FASTLIST_INVALID_REF)
     return Q_FALSE;
 
   return Q_TRUE;

@@ -139,4 +139,6 @@ qwiring_t *qwiring_deserialize (const qdb_t *, const void *, uint32_t);
 uint32_t qcircuit_serialize (const qcircuit_t *, void *, uint32_t);
 qcircuit_t *qcircuit_deserialize (const qdb_t *, const void *, uint32_t);
 
+void qgate_debug (const qgate_t *);
+
 #endif /* _LIBQCIRCUIT_QCIRCUIT_H */

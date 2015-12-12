@@ -45,6 +45,15 @@ qas_close (qas_ctx_t *ctx)
   if (ctx->curr_circuit != NULL)
     qcircuit_destroy (ctx->curr_circuit);
 
+  if (ctx->curr_gate != NULL)
+    qgate_destroy (ctx->curr_gate);
+
+  FASTLIST_FOR_BEGIN (char *, alias, &ctx->qubit_aliases)
+    free (alias);
+  FASTLIST_FOR_END
+
+  fastlist_free (&ctx->qubit_aliases);
+
   free (ctx);
 }
 
