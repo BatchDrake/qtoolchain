@@ -81,7 +81,7 @@ typedef struct qcircuit qcircuit_t;
 
 void qgate_destroy (qgate_t *);
 qgate_t *qgate_new (unsigned int, const char *, const char *, const QCOMPLEX *);
-void qgate_set_coef (qgate_t *, const QCOMPLEX *);
+QBOOL qgate_set_coef (qgate_t *, const QCOMPLEX *);
 
 qwiring_t *qwiring_new (const qgate_t *, const unsigned int *);
 void qwiring_destroy (qwiring_t *);
@@ -119,6 +119,7 @@ qwiring_prev (const qwiring_t *wiring)
 }
 
 QBOOL qcircuit_update (qcircuit_t *);
+QBOOL qgate_init_sparse (qgate_t *);
 
 /* These functions may fail if U is not updated*/
 QBOOL qcircuit_apply_state (qcircuit_t *, const QCOMPLEX *);

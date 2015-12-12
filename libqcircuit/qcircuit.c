@@ -130,6 +130,39 @@ qgate_destroy (qgate_t *gate)
   free (gate);
 }
 
+QBOOL
+qgate_init_sparse (qgate_t *gate)
+{
+  unsigned int i, j;
+  unsigned int length;
+
+  length = 1 << gate->order;
+
+  if (gate->sparse != NULL)
+  {
+    q_set_last_error ("gate sparse matrix already initialized");
+
+    return Q_FALSE;
+  }
+
+  if ((gate->sparse = qsparse_new (gate->order)) == NULL)
+    return Q_FALSE;
+
+  for (j = 0; j < length; ++j)
+    for (i = 0; i < length; ++i)
+      if (!QSPARSE_IS_ZERO (gate->coef[i + length * j]))
+        if (!qsparse_set (gate->sparse, j, i, gate->coef[i + length * j]))
+        {
+          qsparse_destroy (gate->sparse);
+
+          gate->sparse = NULL;
+
+          return Q_FALSE;
+        }
+
+  return Q_TRUE;
+}
+
 qgate_t *
 qgate_new (unsigned int order, const char *name, const char *desc, const QCOMPLEX *coef)
 {
@@ -153,7 +186,12 @@ qgate_new (unsigned int order, const char *name, const char *desc, const QCOMPLE
   new->order = order;
 
   if (coef != NULL)
+  {
     memcpy (new->coef, coef, length);
+
+    if (!qgate_init_sparse (new))
+      goto fail;
+  }
 
   return new;
 
@@ -181,13 +219,22 @@ qgate_debug (const qgate_t *gate)
   }
 }
 
-void
+QBOOL
 qgate_set_coef (qgate_t *gate, const QCOMPLEX *coef)
 {
   unsigned int length;
   length = 1 << (gate->order + 1);
 
+  if (gate->sparse != NULL)
+  {
+    q_set_last_error ("cannot set gate coefficients twice");
+
+    return Q_FALSE;
+  }
+
   memcpy (gate->coef, coef, length);
+
+  return qgate_init_sparse (gate);
 }
 
 static unsigned int *
@@ -216,6 +263,8 @@ qwiring_new (const qgate_t *gate, const unsigned int *remap)
   new->prev = new->next = NULL;
 
   new->gate  = gate;
+
+  new->__cached = NULL;
 
   if (remap != NULL)
   {
@@ -267,7 +316,7 @@ qcircuit_destroy (qcircuit_t *circuit)
   {
     next = this->next;
 
-    qwiring_destroy (next);
+    qwiring_destroy (this);
 
     this = next;
   }
@@ -402,6 +451,13 @@ fail:
 static QBOOL
 qwiring_assert_sparse (qcircuit_t *circuit, qwiring_t *wiring)
 {
+  if (wiring->gate->sparse == NULL)
+  {
+    q_set_last_error ("cannot assert sparse matrix on uninitialized gate");
+
+    return Q_FALSE;
+  }
+
   if (wiring->__cached == NULL)
     if ((wiring->__cached = qsparse_expand (wiring->gate->sparse, circuit->order, wiring->remap)) == NULL)
       return Q_FALSE;

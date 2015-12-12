@@ -161,6 +161,8 @@ QINSTDECL(gate);
 QINSTDECL(coef);
 QINSTDECL(qubit);
 
+QINSTDECL(__generic_gate);
+
 struct qas_instruction instructions[] =
 {
     {".circuit", QINSTFUNC (circuit)},
@@ -169,7 +171,7 @@ struct qas_instruction instructions[] =
     {".include", QINSTFUNC (include)},
     {".coef",    QINSTFUNC (coef)},
     {".qubit",   QINSTFUNC (qubit)},
-    {NULL, NULL}
+    {NULL,       QINSTFUNC (__generic_gate)} /* Generic gate parser */
 };
 
 QINSTDECL(circuit)
@@ -319,6 +321,8 @@ QINSTDECL(qubit)
 QINSTDECL(include)
 {
   char *file;
+  char *filearg;
+
   qas_ctx_t *inc_ctx;
 
   Q_ENSURE_ARGS (1);
@@ -326,9 +330,20 @@ QINSTDECL(include)
 
   Q_ENSURE_STRING (0);
 
-  if ((file = q_string_remove_quotes (Q_ARG (0))) == NULL)
+  if ((filearg = q_string_remove_quotes (Q_ARG (0))) == NULL)
   {
     qas_set_error (ctx, "memory exhausted");
+
+    return Q_FALSE;
+  }
+
+  file = qas_resolve_include (filearg);
+
+  free (filearg);
+
+  if (file == NULL)
+  {
+    qas_set_error (ctx, "couldn't resolve include file: %s", q_get_last_error ());
 
     return Q_FALSE;
   }
@@ -365,16 +380,28 @@ QINSTDECL(include)
 
 QINSTDECL(end)
 {
+  QBOOL result = Q_TRUE;
+
   Q_ENSURE_ARGS (0);
 
   switch (ctx->ctx_kind)
   {
     case QAS_CTX_KIND_CIRCUIT:
-      if (!qdb_register_qcircuit (ctx->qdb, ctx->curr_circuit))
+      result = qcircuit_update (ctx->curr_circuit);
+
+      if (!result)
+      {
+        Q_CIRCUIT_ERROR (ctx, "%s", q_get_last_error ());
+
+        qcircuit_destroy (ctx->curr_circuit);
+      }
+      else if (!qdb_register_qcircuit (ctx->qdb, ctx->curr_circuit))
       {
         qas_set_error (ctx, "cannot register circuit: %s", q_get_last_error ());
 
-        return Q_FALSE;
+        qcircuit_destroy (ctx->curr_circuit);
+
+        result = Q_FALSE;
       }
 
       ctx->curr_circuit = NULL;
@@ -388,7 +415,15 @@ QINSTDECL(end)
       break;
 
     case QAS_CTX_KIND_GATE:
-      if (!qdb_register_qgate (ctx->qdb, ctx->curr_gate))
+      result = qgate_init_sparse (ctx->curr_gate);
+
+      if (!result)
+      {
+        Q_CIRCUIT_ERROR (ctx, "%s", q_get_last_error ());
+
+        qgate_destroy (ctx->curr_gate);
+      }
+      else if (!qdb_register_qgate (ctx->qdb, ctx->curr_gate))
       {
         qas_set_error (ctx, "cannot register circuit: %s", q_get_last_error ());
 
@@ -401,10 +436,91 @@ QINSTDECL(end)
 
     case QAS_CTX_KIND_GLOBAL:
       qas_set_error (ctx, "%s: no context to close", inst);
-      return Q_FALSE;
+      result = Q_FALSE;
+  }
+
+  ctx->ctx_kind = QAS_CTX_KIND_GLOBAL;
+
+  return result;
+}
+
+QINSTDECL(__generic_gate)
+{
+  qgate_t *gate;
+  unsigned int i, j;
+  unsigned int *rewire = NULL;
+  fastlist_ref_t wireref;
+  qwiring_t *wiring = NULL;
+
+  Q_ENSURE_CONTEXT (QAS_CTX_KIND_CIRCUIT);
+
+  if ((gate = qdb_lookup_qgate (ctx->qdb, inst)) == NULL)
+  {
+    Q_CIRCUIT_ERROR (ctx, "unrecognized gate `%s'", inst);
+
+    goto fail;
+  }
+
+  Q_ENSURE_ARGS (gate->order);
+
+  if ((rewire = malloc (sizeof (unsigned int) * gate->order)) == NULL)
+  {
+    Q_CIRCUIT_ERROR (ctx, "memory exhausted");
+
+    goto fail;
+  }
+
+  for (i = 0; i < gate->order; ++i)
+  {
+    Q_ENSURE_IDENTIFIER (i);
+
+    if ((wireref = qas_ctx_resolve_qubit_alias (ctx, Q_ARG (i))) == FASTLIST_INVALID_REF)
+    {
+      Q_CIRCUIT_ERROR (ctx, "qubit `%s' undeclared", Q_ARG (i));
+
+      goto fail;
+    }
+
+    rewire[i] = wireref;
+
+    /* Verification of the no-cloning theorem */
+    for (j = 0; j < i; ++j)
+      if (rewire[j] == wireref)
+      {
+        Q_CIRCUIT_ERROR (ctx, "cannot clone quantum states");
+
+        goto fail;
+      }
+  }
+
+  if ((wiring = qwiring_new (gate, rewire)) == NULL)
+  {
+    Q_CIRCUIT_ERROR (ctx, "cannot create wiring: memory exhausted");
+
+    goto fail;
+  }
+
+  free (rewire);
+
+  rewire = NULL;
+
+  if (!qcircuit_append_wiring (ctx->curr_circuit, wiring))
+  {
+    Q_CIRCUIT_ERROR (ctx, "%s", q_get_last_error ());
+
+    goto fail;
   }
 
   return Q_TRUE;
+
+fail:
+  if (wiring != NULL)
+    qwiring_destroy (wiring);
+
+  if (rewire != NULL)
+    free (rewire);
+
+  return Q_FALSE;
 }
 
 static char *
@@ -639,7 +755,7 @@ qas_parse (qas_ctx_t *ctx)
 
     i = 0;
 
-    while (instructions[i].cb != NULL)
+    while (instructions[i].inst != NULL)
     {
       if (strcmp (instructions[i].inst, instr) == 0)
         break;
@@ -647,12 +763,11 @@ qas_parse (qas_ctx_t *ctx)
       ++i;
     }
 
-    if (instructions[i].cb == NULL)
-    {
-      qas_set_error (ctx, "unrecognized instruction `%s'", instr);
-      goto fail;
-    }
-    else if (!instructions[i].cb (ctx, instr, &arglist))
+    /* If the instruction wasn't found, we call
+     * the generic gate callback which acts as
+     * sentinel.
+     */
+    if (!instructions[i].cb (ctx, instr, &arglist))
       goto fail;
 
     FASTLIST_FOR_BEGIN (char *, arg, &arglist)

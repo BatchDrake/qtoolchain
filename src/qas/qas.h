@@ -90,4 +90,9 @@ qdb_t *qas_pop_db (qas_ctx_t *);
 
 void qas_close (qas_ctx_t *);
 
+QBOOL qas_register_include (const char *);
+char *qas_resolve_include (const char *);
+
+QBOOL qas_init (void);
+
 #endif /* _QAS_QAS_H */

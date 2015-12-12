@@ -35,6 +35,15 @@ main (int argc, char *argv[])
     exit (EXIT_FAILURE);
   }
 
+  if (!qas_init ())
+  {
+    fprintf (stderr, "%s: couldn't initialize assembler: %s\n",
+             argv[0],
+             q_get_last_error ());
+
+    exit (EXIT_FAILURE);
+  }
+
   if ((ctx = qas_open_from_file (argv[1])) == NULL)
   {
     fprintf (stderr, "%s: cannot open `%s'\n",
@@ -61,10 +70,10 @@ main (int argc, char *argv[])
 
   db = qas_pop_db (ctx);
 
-  FASTLIST_FOR_BEGIN (qgate_t *, gate, &db->qgates)
-    printf ("Gate %s (%s)\n", gate->name, gate->description);
+  FASTLIST_FOR_BEGIN (qcircuit_t *, circuit, &db->qcircuits)
+    printf ("Circuit %s (%d qubits)\n", circuit->name, circuit->order);
 
-    qgate_debug(gate);
+    qsparse_debug(circuit->u);
 
     printf ("\n");
 

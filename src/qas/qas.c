@@ -217,3 +217,12 @@ qas_get_line (const qas_ctx_t *ctx)
   return ctx->line;
 }
 
+QBOOL
+qas_init (void)
+{
+  if (!qas_register_include ("/usr/share/qas/include"))
+    return Q_FALSE;
+
+  return Q_TRUE;
+}
+
