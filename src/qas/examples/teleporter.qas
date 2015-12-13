@@ -41,7 +41,7 @@
 
 .circuit teleporter_recv, 3
   .qubit b1        # Collapsed qubit 1 (measure on psi)
-  .qubit b2        # Collapsed qubit 2 (measure on entabled qubit for Alice) 
+  .qubit b2        # Collapsed qubit 2 (measure on entangled qubit for Alice) 
   .qubit beta_B    # Entangled qubit for Bob
   
   cnot beta_B, b2
