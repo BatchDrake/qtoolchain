@@ -184,9 +184,17 @@ QINSTDECL(circuit)
   Q_ENSURE_IDENTIFIER (0);
   Q_ENSURE_NUM (1);
 
-  /* Create circuit */
+  /* Avoid circuit redefinitions */
+  if (qdb_lookup_qcircuit (ctx->qdb, Q_ARG (0)) != NULL)
+  {
+    qas_set_error (ctx, "redefinition of quantum circuit `%s'", Q_ARG (0));
+
+    return Q_FALSE;
+  }
+
   Q_PARSE_NUM (1, qubits);
 
+  /* Create circuit */
   if ((ctx->curr_circuit = qcircuit_new (qubits, Q_ARG (0))) == NULL)
     return Q_FALSE;
 
@@ -207,9 +215,17 @@ QINSTDECL(gate)
   Q_ENSURE_NUM (1);
   Q_ENSURE_STRING (2);
 
-  /* Create gate */
+  /* Avoid gate redefinitions */
+  if (qdb_lookup_qgate (ctx->qdb, Q_ARG (0)) != NULL)
+  {
+    qas_set_error (ctx, "redefinition of quantum gate `%s'", Q_ARG (0));
+
+    return Q_FALSE;
+  }
+
   Q_PARSE_NUM (1, qubits);
 
+  /* Create gate */
   if ((desc = q_string_remove_quotes (Q_ARG (2))) == NULL)
   {
     qas_set_error (ctx, "memory exhausted");
@@ -245,7 +261,7 @@ QINSTDECL(coef)
 
   Q_ENSURE_CONTEXT (QAS_CTX_KIND_GATE);
 
-  matrix_length = 1 << (ctx->curr_gate->order + 1);
+  matrix_length = 1 << (ctx->curr_gate->order << 1);
 
   for (i = 0; i < fastlist_size (args); ++i)
   {

@@ -4,5 +4,11 @@ SUBDIRS = libq libqcircuit util src
 
 ACLOCAL_AMFLAGS = -I m4
 
-EXTRA_DIST = AUTHORS ChangeLog NEWS README
+EXTRA_DIST = AUTHORS ChangeLog NEWS README src/qas/include
 
+install-data-local:
+	$(MKDIR_P) $(pkgdatadir)/include
+	for f in standard.inc; do \
+		$(INSTALL_DATA) $(srcdir)/src/qas/include/$$f \
+		$(pkgdatadir)/include; done
+	

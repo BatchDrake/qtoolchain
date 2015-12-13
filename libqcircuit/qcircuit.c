@@ -169,7 +169,7 @@ qgate_new (unsigned int order, const char *name, const char *desc, const QCOMPLE
   unsigned int length;
   qgate_t *new = NULL;
 
-  length = 1 << (order + 1);
+  length = 1 << (order << 1);
 
   if ((new = calloc (1, sizeof (qgate_t))) == NULL)
     goto fail;
@@ -223,7 +223,7 @@ QBOOL
 qgate_set_coef (qgate_t *gate, const QCOMPLEX *coef)
 {
   unsigned int length;
-  length = 1 << (gate->order + 1);
+  length = 1 << (gate->order << 1);
 
   if (gate->sparse != NULL)
   {

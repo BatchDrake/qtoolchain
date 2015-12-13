@@ -220,7 +220,7 @@ qas_get_line (const qas_ctx_t *ctx)
 QBOOL
 qas_init (void)
 {
-  if (!qas_register_include ("/usr/share/qas/include"))
+  if (!qas_register_include (QAS_DATA_DIR "/include"))
     return Q_FALSE;
 
   return Q_TRUE;
