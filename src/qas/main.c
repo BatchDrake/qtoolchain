@@ -22,12 +22,19 @@
 #include <stdio.h>
 #include "qas.h"
 
+#define SQRT_2 7.07106781186547573e-01
+#define ALPHA 0.6
+#define BETA  -0.8
+
 int
 main (int argc, char *argv[])
 {
   qas_ctx_t *ctx;
   qdb_t *db;
   unsigned int i;
+  QCOMPLEX state[8] = {0};
+  qcircuit_t *send, *recv;
+  unsigned int measure;
 
   if (argc != 2)
   {
@@ -81,6 +88,74 @@ main (int argc, char *argv[])
 
   qas_close (ctx);
 
+  if ((send = qdb_lookup_qcircuit (db, "teleporter_send")) != NULL &&
+      (recv = qdb_lookup_qcircuit (db, "teleporter_recv")) != NULL)
+  {
+    for (i = 0; i < 100; ++i)
+    {
+      memset (state, 0, sizeof (state));
+
+      state[0] = ALPHA * SQRT_2; /* |000> */
+      state[6] = ALPHA * SQRT_2; /* |110> */
+
+      state[1] = BETA  * SQRT_2; /* |001> */
+      state[7] = BETA  * SQRT_2; /* |111> */
+
+      printf ("Alice puts state \033[1;32m%lg|0> + %lg|1> in qubit 0\033[0m\n", ALPHA, BETA);
+
+      if (!qcircuit_apply_state (send, state))
+      {
+        printf ("Failed to apply state: %s\n", q_get_last_error ());
+
+        goto done;
+      }
+
+      if (!qcircuit_collapse (send, 0x1, &measure))
+      {
+        printf ("Measure failed: %s\n", q_get_last_error ());
+
+        goto done;
+      }
+
+      if (!qcircuit_collapse (send, 0x2, &measure))
+      {
+        printf ("Measure failed: %s\n", q_get_last_error ());
+
+        goto done;
+      }
+
+/*      qcircuit_debug_state (send);*/
+
+      measure = qcircuit_get_measure_bits (send);
+
+      if (!qcircuit_get_state (send, state))
+      {
+        printf ("Failed to get state: %s\n", q_get_last_error ());
+
+        goto done;
+      }
+
+      if (!qcircuit_apply_state (recv, state))
+      {
+        printf ("Failed to apply state: %s\n", q_get_last_error ());
+
+        goto done;
+      }
+
+      if (!qcircuit_get_state (recv, state))
+      {
+        printf ("Failed to get state: %s\n", q_get_last_error ());
+
+        goto done;
+      }
+
+/*      qcircuit_debug_state (recv);*/
+
+      printf ("Bob   gets state \033[1;31m%lg|0> + %lg|1> in qubit 2\033[0m\n\n", creal (state[measure]), creal (state[measure + 4]));
+
+    }
+  }
+done:
   qdb_destroy (db, Q_TRUE);
 
   return 0;

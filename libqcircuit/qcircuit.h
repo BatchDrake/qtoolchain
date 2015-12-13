@@ -123,9 +123,12 @@ QBOOL qgate_init_sparse (qgate_t *);
 
 /* These functions may fail if U is not updated*/
 QBOOL qcircuit_apply_state (qcircuit_t *, const QCOMPLEX *);
-const QCOMPLEX *qcircuit_get_state (const qcircuit_t *);
+QBOOL qcircuit_get_state (const qcircuit_t *, QCOMPLEX *);
 QBOOL qcircuit_collapse (qcircuit_t *, uint64_t, unsigned int *);
 
+uint64_t qcircuit_get_measure_bits (const qcircuit_t *);
+
+void qcircuit_debug_state (const qcircuit_t *);
 void qcircuit_destroy (qcircuit_t *);
 
 #include "qdb.h"

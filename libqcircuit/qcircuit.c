@@ -532,10 +532,34 @@ qcircuit_apply_state (qcircuit_t *circuit, const QCOMPLEX *psi)
   return Q_TRUE;
 }
 
-const QCOMPLEX *
-qcircuit_get_state (const qcircuit_t *circuit)
+QBOOL
+qcircuit_get_state (const qcircuit_t *circuit, QCOMPLEX *psi)
 {
-  return circuit->collapsed;
+  unsigned int i;
+  unsigned int length;
+
+  if (!circuit->updated)
+  {
+    q_set_last_error ("qcircuit_apply_state: circuit operator not updated");
+    return Q_FALSE;
+  }
+
+  length = 1 << circuit->order;
+
+  for (i = 0; i < length; ++i)
+    if (!circuit->collapsed_mask ||
+        (circuit->collapsed_mask & i) == circuit->measure_result)
+      psi[i] = circuit->collapsed[i];
+    else
+      psi[i] = 0.0;
+
+  return Q_TRUE;
+}
+
+uint64_t
+qcircuit_get_measure_bits (const qcircuit_t *circuit)
+{
+  return circuit->measure_result;
 }
 
 static int
@@ -632,7 +656,6 @@ qcircuit_collapse (qcircuit_t *circuit, uint64_t mask, unsigned int *measure)
     return Q_TRUE;
   }
 
-  qcircuit_debug_state (circuit);
 
   /* Setup of qubits to measure */
   m_order = 0;
