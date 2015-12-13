@@ -27,7 +27,8 @@
 struct qstate_info
 {
   unsigned int i;
-  double p; /* Probabiliy */
+  double p; /* Density function */
+  double d; /* Distribution function */
 };
 
 
@@ -74,7 +75,8 @@ randslot (const struct qstate_info *slots, unsigned int n)
   while (hi > lo)
   {
     mi = average2scomplement (lo, hi);
-    if (x >= slots[mi].p)
+
+    if (x >= slots[mi].d)
       lo = mi + 1;
     else
       hi = mi;
@@ -85,7 +87,7 @@ randslot (const struct qstate_info *slots, unsigned int n)
   /* If slots[lo-1] <= x < x+RS_SCALE <= slots[lo] then
      any point in [x,x+RS_SCALE) is in [slots[lo-1],slots[lo]) */
 
-  if ((xhi = x + RS_SCALE) <= slots[lo].p)
+  if ((xhi = x + RS_SCALE) <= slots[lo].d)
     return lo;
 
   /* Otherwise x < slots[lo] < x+RS_SCALE */
@@ -93,10 +95,10 @@ randslot (const struct qstate_info *slots, unsigned int n)
   for (;;)
   {
     /* x < slots[lo] < xhi */
-    if (randbiased ((slots[lo].p - x) / (xhi - x)))
+    if (randbiased ((slots[lo].d - x) / (xhi - x)))
       return lo;
 
-    x = slots[lo].p;
+    x = slots[lo].d;
 
     lo++;
 
@@ -104,7 +106,7 @@ randslot (const struct qstate_info *slots, unsigned int n)
       return n - 1;
 
     /* slots[lo-1] = x <= xhi <= slots[lo] */
-    if (xhi <= slots[lo].p)
+    if (xhi <= slots[lo].d)
         return lo;
   }
 
@@ -570,11 +572,10 @@ qstate_info_compare (const void *a, const void *b)
   qa = (const struct qstate_info *) a;
   qb = (const struct qstate_info *) b;
 
-  /* Reverse signedness to achieve descending order sort */
-  if (qa < qb)
-    return 1;
-  else if (qa > qb)
+  if (qa->d < qb->d)
     return -1;
+  else if (qa->d > qb->d)
+    return 1;
 
   return 0;
 }
@@ -719,7 +720,13 @@ qcircuit_collapse (qcircuit_t *circuit, uint64_t mask, unsigned int *measure)
 
   /* Normalize probabilities */
   for (i = 0; i < m_length; ++i)
+  {
     qinfo[i].p /= total_p;
+    qinfo[i].d  = qinfo[i].p;
+
+    if (i > 0)
+      qinfo[i].d += qinfo[i - 1].d;
+  }
 
   /* Third: sort */
   qsort (qinfo, m_length, sizeof (struct qstate_info), qstate_info_compare);

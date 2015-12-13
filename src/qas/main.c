@@ -88,10 +88,12 @@ main (int argc, char *argv[])
 
   qas_close (ctx);
 
+  unsigned int bins[4] = {0};
+
   if ((send = qdb_lookup_qcircuit (db, "teleporter_send")) != NULL &&
       (recv = qdb_lookup_qcircuit (db, "teleporter_recv")) != NULL)
   {
-    for (i = 0; i < 100; ++i)
+    for (i = 0; i < 1000; ++i)
     {
       memset (state, 0, sizeof (state));
 
@@ -101,7 +103,7 @@ main (int argc, char *argv[])
       state[1] = BETA  * SQRT_2; /* |001> */
       state[7] = BETA  * SQRT_2; /* |111> */
 
-      printf ("Alice puts state \033[1;32m%lg|0> + %lg|1> in qubit 0\033[0m\n", ALPHA, BETA);
+      printf ("Alice puts state \033[1;32m%lg|0> + %lg|1>\033[0m in qubit 0\n", ALPHA, BETA);
 
       if (!qcircuit_apply_state (send, state))
       {
@@ -110,14 +112,7 @@ main (int argc, char *argv[])
         goto done;
       }
 
-      if (!qcircuit_collapse (send, 0x1, &measure))
-      {
-        printf ("Measure failed: %s\n", q_get_last_error ());
-
-        goto done;
-      }
-
-      if (!qcircuit_collapse (send, 0x2, &measure))
+      if (!qcircuit_collapse (send, 0x3, &measure))
       {
         printf ("Measure failed: %s\n", q_get_last_error ());
 
@@ -151,9 +146,13 @@ main (int argc, char *argv[])
 
 /*      qcircuit_debug_state (recv);*/
 
-      printf ("Bob   gets state \033[1;31m%lg|0> + %lg|1> in qubit 2\033[0m\n\n", creal (state[measure]), creal (state[measure + 4]));
+      printf ("Bob   gets state \033[1;31m%lg|0> + %lg|1>\033[0m in qubit 2 (measure: 0x%x)\n\n", creal (state[measure]), creal (state[measure + 4]), measure);
 
+      bins[measure]++;
     }
+
+    for (i = 0; i < 4; ++i)
+      printf ("Number of collapses with measure 0x%x: %d\n", i, bins[i]);
   }
 done:
   qdb_destroy (db, Q_TRUE);
