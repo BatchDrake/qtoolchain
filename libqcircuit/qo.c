@@ -236,7 +236,7 @@ qoplan_dump_objects (FILE *fp, fastlist_t *fl, uint32_t (*serialize_fn) (const v
   /* Dump all dependencies */
   FASTLIST_FOR_BEGIN (struct qoplan_object *, this, fl)
     this->offset = ftell (fp);
-    this->size   = (serialize_fn) (this, NULL, 0);
+    this->size   = (serialize_fn) (this->priv, NULL, 0);
 
     if ((buffer = malloc (this->size)) == NULL)
     {
@@ -244,7 +244,7 @@ qoplan_dump_objects (FILE *fp, fastlist_t *fl, uint32_t (*serialize_fn) (const v
       return Q_FALSE;
     }
 
-    (serialize_fn) (this, buffer, this->size);
+    (serialize_fn) (this->priv, buffer, this->size);
 
     if (fwrite (buffer, this->size, 1, fp) < 1)
     {

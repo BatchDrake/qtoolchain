@@ -148,7 +148,7 @@ void *
 fastlist_walk (const fastlist_t *fl, void *(*cb) (void *, void *), void *private)
 {
   fastlist_ref_t i = 0;
-  void *result;
+  void *result = NULL;
 
   for (i = 0; i < fl->size; ++i)
     if (fl->list[i] != NULL)

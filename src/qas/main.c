@@ -22,9 +22,44 @@
 #include <stdio.h>
 #include "qas.h"
 
+#include <qo.h>
+#include <qoplan.h>
+
 #define SQRT_2 7.07106781186547573e-01
 #define ALPHA 0.6
 #define BETA  -0.8
+
+QBOOL
+qdb_dump_to_qo (const qdb_t *qdb, const char *path)
+{
+  qoplan_t *plan = NULL;
+
+  if ((plan = qoplan_new ()) == NULL)
+    goto fail;
+
+  FASTLIST_FOR_BEGIN (const qcircuit_t *, c, &qdb->qcircuits)
+    if (!qoplan_add_circuit (plan, c))
+      goto fail;
+  FASTLIST_FOR_END
+
+  FASTLIST_FOR_BEGIN (const qgate_t *, g, &qdb->qgates)
+      if (!qoplan_add_gate (plan, g))
+        goto fail;
+  FASTLIST_FOR_END
+
+  if (!qoplan_dump_to_file (plan, path))
+    goto fail;
+
+  qoplan_destroy (plan);
+
+  return Q_TRUE;
+
+fail:
+  if (plan != NULL)
+    qoplan_destroy (plan);
+
+  return Q_FALSE;
+}
 
 int
 main (int argc, char *argv[])
@@ -36,9 +71,9 @@ main (int argc, char *argv[])
   qcircuit_t *send, *recv;
   unsigned int measure;
 
-  if (argc != 2)
+  if (argc != 3)
   {
-    fprintf (stderr, "Usage:\n\t%s <file.qas>\n", argv[0]);
+    fprintf (stderr, "Usage:\n\t%s <file.qas> <output.qo>\n", argv[0]);
     exit (EXIT_FAILURE);
   }
 
@@ -73,21 +108,25 @@ main (int argc, char *argv[])
     exit (EXIT_FAILURE);
   }
 
-  fprintf (stderr, "%s: parse OK\n", argv[0]);
-
   db = qas_pop_db (ctx);
-
-  FASTLIST_FOR_BEGIN (qcircuit_t *, circuit, &db->qcircuits)
-    printf ("Circuit %s (%d qubits)\n", circuit->name, circuit->order);
-
-    qsparse_debug(circuit->u);
-
-    printf ("\n");
-
-  FASTLIST_FOR_END
 
   qas_close (ctx);
 
+  if (!qdb_dump_to_qo (db, argv[2]))
+  {
+    fprintf (stderr, "%s: cannot dump quantum object file: %s\n", argv[0], q_get_last_error ());
+
+    qdb_destroy (db, Q_TRUE);
+
+    exit (EXIT_FAILURE);
+  }
+
+  qdb_destroy (db, Q_TRUE);
+
+  return 0;
+}
+
+#if 0
   unsigned int bins[4] = {0};
 
   if ((send = qdb_lookup_qcircuit (db, "teleporter_send")) != NULL &&
@@ -154,9 +193,5 @@ main (int argc, char *argv[])
     for (i = 0; i < 4; ++i)
       printf ("Number of collapses with measure 0x%x: %d\n", i, bins[i]);
   }
-done:
-  qdb_destroy (db, Q_TRUE);
-
-  return 0;
-}
+#endif
 

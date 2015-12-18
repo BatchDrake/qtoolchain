@@ -201,7 +201,7 @@ qsb_read_complex (struct qsb *state, QCOMPLEX *val)
   return Q_TRUE;
 }
 
-
+#include <stdio.h>
 
 void
 qsb_write_string (struct qsb *state, const char *string)
